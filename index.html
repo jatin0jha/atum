@@ -179,7 +179,7 @@
             showList("results");
 
             try {
-                const res = await fetch("/search", {
+                const res = await fetch("http://172.31.46.222:8000/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ query })
@@ -221,7 +221,7 @@
             songNameDiv.textContent = song.title;
 
             try {
-                const res = await fetch("/stream", {
+                const res = await fetch("http://172.31.46.222:8000/stream", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ video_id: song.video_id })
