@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="https://www.svgrepo.com/show/496431/music-square.svg" type="image/x-icon">
+    <title>Music player</title>
+    <style>
+        body {
+            background-color: rgb(19, 19, 19);
+            color: rgb(225, 225, 225);
+            font-family: monospace;
+            margin: 0;
+            display: grid;
+            grid-template-rows: calc(100vh - 60px) 60px;
+        }
+
+        nav {
+            display: grid;
+            grid-template-columns: 40px auto;
+            gap: 5px;
+            align-items: center;
+            margin: 5px;
+            position: sticky;
+            top: 5px;
+        }
+
+        nav .search-music {
+            background-color: rgba(43, 43, 43, 0.652);
+            border: none;
+            outline: none;
+            height: 20px;
+            border-radius: 10px;
+            padding: 10px;
+            color: rgb(225, 225, 225);
+            backdrop-filter: blur(10px);
+        }
+
+        .menu-bar-icon {
+            background-color: rgba(43, 43, 43, 0.652);
+            aspect-ratio: 1;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 7px;
+            backdrop-filter: blur(10px);
+            border: none;
+            outline: none;
+            background-image: url(https://www.svgrepo.com/show/499807/home-page.svg);
+            background-size: 70%;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .bottom-player-footer {
+            background-color: rgb(13, 13, 13);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px;
+        }
+
+        #audioPlayer {
+            width: 100%;
+            filter: invert(1);
+            height: 30px;
+        }
+
+        .music-list {
+            list-style: decimal;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 5px;
+            margin: 10px;
+            padding: 0;
+        }
+
+        .music-list li {
+            display: flex;
+            align-items: center;
+            background-color: black;
+            border-radius: 10px;
+            padding: 5px;
+            gap: 5px;
+        }
+
+        .music-list li span {
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .thumbnail {
+            aspect-ratio: 1;
+            height: 60px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 6px;
+        }
+
+        #current-song {
+            aspect-ratio: 1;
+            height: 50px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0;
+        }
+
+        #current-song-name {
+            margin: 0 20px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            width: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="overflow-y: scroll;">
+        <nav>
+            <button class="menu-bar-icon" id="homeButton"></button>
+            <input class="search-music" id="searchInput" type="text" placeholder="Search...">
+        </nav>
+        <div class="list-of-songs">
+            <ul class="music-list" id="results"></ul>
+            <ul class="music-list" id="previously-played"></ul>
+            <!-- Add a loading indicator in your HTML -->
+            <div class="loading-indicator" style="display: none;">Loading...</div>
+        </div>
+    </div>
+    <div class="bottom-player-footer">
+        <div id="current-song" style="background-image: none;"></div>
+        <div style="width: 100%;">
+            <div id="current-song-name"></div>
+            <audio id="audioPlayer" controls></audio>
+        </div>
+    </div>
+</body>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const searchInput = document.getElementById("searchInput");
+        const homeButton = document.getElementById("homeButton");
+        const resultsList = document.getElementById("results");
+        const previouslyPlayedList = document.getElementById("previously-played");
+        const audioPlayer = document.getElementById("audioPlayer");
+        const currentSongDiv = document.getElementById("current-song");
+        const songNameDiv = document.getElementById("current-song-name");
+
+        let songQueue = [];
+        let currentSongIndex = 0;
+        let lastPlayedSongIndex = -1;
+
+        loadPreviouslyPlayedSongs();
+
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                searchSongs();
+            }
+        });
+
+        homeButton.addEventListener("click", () => {
+            showList("previously-played");
+        });
+
+        async function searchSongs() {
+            const input = searchInput.value.trim();
+            const query = input ? `${input} song` : "song";
+
+            resultsList.innerHTML = "Searching...";
+            showList("results");
+
+            try {
+                const res = await fetch("/search", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query })
+                });
+
+                if (res.ok) {
+                    const results = await res.json();
+                    resultsList.innerHTML = "";
+                    songQueue = results;
+                    currentSongIndex = 0;
+
+                    results.forEach((song, index) => {
+                        const li = createSongListItem(song, index, "results");
+                        resultsList.appendChild(li);
+                    });
+                } else {
+                    resultsList.innerHTML = "Failed to fetch results.";
+                }
+            } catch (error) {
+                resultsList.innerHTML = "Error fetching results.";
+                console.error(error);
+            }
+        }
+
+        function createSongListItem(song, index, listType) {
+            const li = document.createElement("li");
+            li.style.cursor = "pointer";
+            li.addEventListener("click", () => playSong(song, index, listType));
+            li.innerHTML = `
+                <div class="thumbnail" style="background-image: url('${song.thumbnail}');"></div>
+                <span>${song.title}</span>`;
+            return li;
+        }
+
+        async function playSong(song, index = 0, listType = "results") {
+            disableSongClick(index, listType);
+
+            currentSongDiv.style.backgroundImage = `url('${song.thumbnail}')`;
+            songNameDiv.textContent = song.title;
+
+            try {
+                const res = await fetch("/stream", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ video_id: song.video_id })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    audioPlayer.src = data.audio_url;
+                    audioPlayer.play();
+
+                    currentSongIndex = index;
+                    saveSongToLocalStorage(song);
+
+                    // Only enable the previous song's click event if it's not the current song
+                    if (lastPlayedSongIndex !== -1 && lastPlayedSongIndex !== index) {
+                        enableSongClick(lastPlayedSongIndex, listType);
+                    }
+
+                    lastPlayedSongIndex = index;
+                    updateSongQueue(listType);
+
+                    audioPlayer.onended = () => {
+                        if (songQueue.length > 0) {
+                            const nextSongIndex = (currentSongIndex + 1) % songQueue.length;
+                            playSong(songQueue[nextSongIndex], nextSongIndex, listType);
+                        } else {
+                            console.warn("songQueue is empty. Cannot play the next song.");
+                        }
+                    };
+
+                    // Ensure the current playing song remains disabled
+                    disableSongClick(index, listType);
+
+                } else {
+                    alert("Failed to play the song.");
+                }
+            } catch (error) {
+                alert("Error playing the song.");
+                console.error(error);
+            }
+        }
+
+        function disableSongClick(index, listType) {
+            const songListItems = document.querySelectorAll(`#${listType} li`);
+            if (songListItems[index]) {
+                songListItems[index].style.pointerEvents = "none";
+                songListItems[index].style.opacity = "0.5";
+            }
+        }
+
+        function enableSongClick(index, listType) {
+            const songListItems = document.querySelectorAll(`#${listType} li`);
+            if (songListItems[index]) {
+                songListItems[index].style.pointerEvents = "auto";
+                songListItems[index].style.opacity = "1";
+            }
+        }
+
+        function saveSongToLocalStorage(song) {
+            let previouslyPlayed = JSON.parse(localStorage.getItem("previouslyPlayedSongs")) || [];
+            if (!previouslyPlayed.some((s) => s.video_id === song.video_id)) {
+                previouslyPlayed.push(song);
+            }
+            localStorage.setItem("previouslyPlayedSongs", JSON.stringify(previouslyPlayed));
+            loadPreviouslyPlayedSongs();
+        }
+
+        function loadPreviouslyPlayedSongs() {
+            previouslyPlayedList.innerHTML = "";
+            const previouslyPlayed = JSON.parse(localStorage.getItem("previouslyPlayedSongs")) || [];
+
+            previouslyPlayed.forEach((song, index) => {
+                const li = createPreviouslyPlayedListItem(song, index);
+                previouslyPlayedList.appendChild(li);
+                if (lastPlayedSongIndex === index) {
+                    disableSongClick(index, "previously-played");
+                }
+            });
+        }
+
+        function createPreviouslyPlayedListItem(song, index) {
+            const li = document.createElement("li");
+            li.style.display = "flex";
+            li.style.alignItems = "center";
+            li.style.justifyContent = "space-between";
+            li.style.cursor = "pointer";
+
+            const songDetails = document.createElement("div");
+            songDetails.style.display = "flex";
+            songDetails.style.alignItems = "center";
+            songDetails.style.gap = "10px";
+            songDetails.style.cursor = "pointer";
+            songDetails.addEventListener("click", () => playSong(song, index, "previously-played"));
+            songDetails.innerHTML = `
+                <div class="thumbnail" style="background-image: url('${song.thumbnail}'); width: 50px; height: 50px; background-size: cover;"></div>
+                <span>${song.title}</span>`;
+
+            const removeButton = document.createElement("button");
+            removeButton.textContent = "✕";
+            removeButton.style.background = "none";
+            removeButton.style.border = "none";
+            removeButton.style.color = "white";
+            removeButton.style.fontSize = "18px";
+            removeButton.style.cursor = "pointer";
+            removeButton.addEventListener("click", (e) => {
+                e.stopPropagation();
+                removeSongFromLocalStorage(index);
+            });
+
+            li.appendChild(songDetails);
+            li.appendChild(removeButton);
+
+            return li;
+        }
+
+        function removeSongFromLocalStorage(index) {
+            let previouslyPlayed = JSON.parse(localStorage.getItem("previouslyPlayedSongs")) || [];
+            previouslyPlayed.splice(index, 1);
+            localStorage.setItem("previouslyPlayedSongs", JSON.stringify(previouslyPlayed));
+            loadPreviouslyPlayedSongs();
+        }
+
+        function showList(listToShow) {
+            if (listToShow === "results") {
+                resultsList.style.display = "grid";
+                previouslyPlayedList.style.display = "none";
+            } else if (listToShow === "previously-played") {
+                resultsList.style.display = "none";
+                previouslyPlayedList.style.display = "grid";
+            }
+        }
+
+        function updateSongQueue(listType) {
+            if (listType === "results") {
+                // Assuming 'results' is a global array
+                songQueue = results;
+            } else if (listType === "previously-played") {
+                songQueue = JSON.parse(localStorage.getItem("previouslyPlayedSongs")) || [];
+            }
+        }
+    });
+</script>
+
+</html>
