@@ -140,7 +140,7 @@
         <div id="current-song" style="background-image: none;"></div>
         <div style="width: 100%;">
             <div id="current-song-name"></div>
-            <audio id="audioPlayer" controls></audio>
+            <audio id="audioPlayer" controls><source src="{{audio_url}}" type="{{mime_type}}"></audio>
         </div>
     </div>
 </body>
@@ -179,7 +179,7 @@
             showList("results");
 
             try {
-                const res = await fetch("http://13.60.55.175:8000/search", {
+                const res = await fetch("/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ query })
@@ -221,7 +221,7 @@
             songNameDiv.textContent = song.title;
 
             try {
-                const res = await fetch("http://13.60.55.175:8000/stream", {
+                const res = await fetch("/stream", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ video_id: song.video_id })
