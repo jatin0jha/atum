@@ -8,7 +8,7 @@
     <title>Music player</title>
     <style>
         body {
-            background-color: rgb(19, 19, 19);
+            background-color: rgb(7, 7, 7);
             color: rgb(225, 225, 225);
             font-family: monospace;
             margin: 0;
@@ -80,8 +80,6 @@
         .music-list li {
             display: flex;
             align-items: center;
-            background-color: black;
-            border-radius: 10px;
             padding: 5px;
             gap: 5px;
         }
@@ -173,7 +171,7 @@
 
         async function searchSongs() {
             const input = searchInput.value.trim();
-            const query = input ? `${input} song` : "song";
+            const query = input ? input : ""; // Removed appending "song" since main.py adds "music" to query
 
             resultsList.innerHTML = "Searching...";
             showList("results");
@@ -316,7 +314,7 @@
             songDetails.style.cursor = "pointer";
             songDetails.addEventListener("click", () => playSong(song, index, "previously-played"));
             songDetails.innerHTML = `
-                <div class="thumbnail" style="background-image: url('${song.thumbnail}'); width: 50px; height: 50px; background-size: cover;"></div>
+                <div class="thumbnail" style="background-image: url('${song.thumbnail}');"></div>
                 <span>${song.title}</span>`;
 
             const removeButton = document.createElement("button");
@@ -364,5 +362,4 @@
         }
     });
 </script>
-
 </html>
